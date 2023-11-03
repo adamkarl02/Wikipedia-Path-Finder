@@ -45,6 +45,8 @@ print(f"Path: {path}")
 print(f"Number of steps: {size}")
 ```
 
+If the script does not find a path, increase the `max_depth` as 3 is the default.
+
 ## Model Caching
 
 On its first run, the script downloads the necessary language model for NLP. This process may take some time but is only required once; the model will be cached for future use.
