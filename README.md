@@ -37,11 +37,13 @@ To use the script, run the find_path function with the start and goal Wikipedia 
 
 python
 
-start_title = 'Nobel Prize'
+```bash
+start_title = 'Nobel Prize' 
 goal_title = 'Array (data structure)'
 path, size = find_path(start_title, goal_title)
 print(f"Path: {path}")
 print(f"Number of steps: {size}")
+```
 
 ## Model Caching
 
