@@ -55,7 +55,6 @@ def heuristic_link_sort(links: list, goal_keywords: list, current_depth: int, ma
 
     top_n = max(top_n, 5)
     return [link for link, score in sorted_links_scores[:top_n]]
-    #print([(link, score) for link, score in sorted_links_scores[:top_n]], '\n')
 
 
 
@@ -79,43 +78,45 @@ def get_wiki_links(title: str) -> list:
 
 
 
-def find_path(start_title: str, goal_title: str, max_depth: int = 5) -> tuple:
+def find_path(start_title: str, goal_title: str, max_depth: int = 3) -> tuple:
     """
     Finds a path from the start Wikipedia page title to the goal Wikipedia page title.
 
     Parameters:
     - start_title (str): The title of the starting Wikipedia page.
     - goal_title (str): The title of the goal Wikipedia page.
-    - max_depth (int, optional): The maximum depth to search. Default is 5.
+    - max_depth (int, optional): The maximum depth to search. Default is 3.
 
     Returns:
     - tuple: A tuple containing the path as a list and the size of the path as an integer.
     """
     normalized_goal_title = get_final_url(goal_title)
-    queue = deque([(start_title, [start_title], 0)])  
-    visited = set()  
-
-    while queue:
-        current_title, path, current_depth = queue.popleft()
-        print(f"Currently on article {current_title} with depth:{current_depth}.")
-        if current_title not in visited:
-            visited.add(current_title)
+    start_title_links = get_wiki_links(start_title)
+    sorted_start_links = heuristic_link_sort(start_title_links, normalized_goal_title.split(), 0, max_depth)
+    
+    for first_link_title in sorted_start_links:
+        queue = deque([(first_link_title, [start_title, first_link_title], 1)])  
+        visited = set([start_title])  
+        
+        while queue:
+            current_title, path, current_depth = queue.popleft()
             if current_depth < max_depth:
                 links = get_wiki_links(current_title)
                 if links:  
                     sorted_links = heuristic_link_sort(links, normalized_goal_title.split(), current_depth, max_depth)
-                    first_link_title = sorted_links[0]
-                    normalized_first_link_title = get_final_url(first_link_title)
-
-                    if normalized_first_link_title == normalized_goal_title:
-                        return path + [normalized_first_link_title], len(path)
-                    
-                    if normalized_first_link_title not in visited:
-                        queue.append((normalized_first_link_title, path + [normalized_first_link_title], current_depth + 1))
+                    for link in sorted_links:
+                        normalized_link_title = get_final_url(link)
+                        if normalized_link_title == normalized_goal_title:
+                            return path + [normalized_link_title], len(path) + 1
+                        if normalized_link_title not in visited:
+                            visited.add(normalized_link_title)
+                            queue.append((normalized_link_title, path + [normalized_link_title], current_depth + 1))
                 else:
                     print(f"No further links found from {current_title}.")
+            else:
+                break  
     
-    return None, 0
+    return None, 1
 
 if __name__ == "__main__":
     start_title = 'Nobel Prize'
