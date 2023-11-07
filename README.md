@@ -1,6 +1,6 @@
 # Wikipedia Path Finder
 
-This Python script is designed to navigate Wikipedia articles. Leveraging both the Wikipedia API and machine learning models, the script intelligently finds a path from one specified article to another. 
+This Python script is designed to navigate Wikipedia articles. Leveraging both the Wikipedia API and machine learning, the script intelligently finds a path from one specified article to another based on semantic relevance. 
 
 ## How It Works
 
@@ -8,18 +8,16 @@ The script operates through several key functions:
 
 - **API Communication:** Utilizes `requests` to interact with the Wikipedia API.
 - **NLP Model:** Employs the `SentenceTransformer` model for advanced natural language processing.
-- **Cosine Similarity:** Applies `cosine_similarity` from `scikit-learn` to measure the relevance of links.
 - **Caching Mechanism:** Implements caching to efficiently store and retrieve processed data, minimizing API calls.
+- **GPU Acceleration:** Optionally uses GPU resources for faster processing of machine learning tasks when available.
 
 ## Detailed Functionality
 
-- **Import Statements:** The code imports the necessary libraries for HTTP requests, JSON handling, queue management, sentence embedding, and cosine similarity computations.
-
 - **Model Loading:** A pre-trained NLP model from Sentence Transformers is loaded (in this case BAAI/bge-base-en-v1.5), which might take some time during the initial run but is cached for subsequent executions.
 
-- **heuristic_link_sort Function:** Sorts links from a Wikipedia page by relevance using NLP and cosine similarity, adjusted by the current depth within the search tree to refine link prioritization.
+- **heuristic_link_sort Function:** Includes an optional GPU parameter to enable hardware acceleration. It sorts links from a Wikipedia page by relevance using NLP and FAISS, adjusted by the current depth within the search tree to refine link prioritization.
 
-- **find_path Function:** The core algorithm, implementing a breadth-first search to find a path between two Wikipedia articles. It uses `heuristic_link_sort` to decide which links to explore further.
+- **find_path Function:** The core algorithm, implementing a breadth-first search to find a path between two Wikipedia articles. It uses `heuristic_link_sort` to decide which links to explore further, with optional GPU acceleration to speed up the process.
 
 ## Installation
 
@@ -28,7 +26,7 @@ To run this script, you will need Python and the following packages:
 ```bash
 pip install requests
 pip install sentence-transformers
-pip install scikit-learn
+pip install faiss-cpu # or faiss-gpu for GPU support
 ```
 
 ## Usage
@@ -40,12 +38,13 @@ python
 ```bash
 start_title = 'Nobel Prize' 
 goal_title = 'Array (data structure)'
-path, size = find_path(start_title, goal_title)
+# Optionally specify a GPU device ID for acceleration
+path, size = find_path(start_title, goal_title, GPU=<GPU_DEVICE_ID>)
 print(f"Path: {path}")
 print(f"Number of steps: {size}")
 ```
 
-If the script does not find a path, increase the `max_depth` as 3 is the default.
+If the script does not find a path, increase the `max_depth` as 2 is the default. Specify the GPU parameter if you want to use GPU acceleration.
 
 ## Model Caching
 
