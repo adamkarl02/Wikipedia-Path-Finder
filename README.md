@@ -1,6 +1,6 @@
 # Wikipedia Path Finder
 
-This Python script is designed to navigate Wikipedia articles. Leveraging both the Wikipedia API and machine learning, the script intelligently finds a path from one specified article to another based on semantic relevance. 
+This Python script uses the Wikipedia API and machine learning to find semantically connected paths between Wikipedia articles. It's an effective demonstration of optimizing API calls, potentially useful for machine learning training datasets requiring precise data relationships. While initially designed for exploration and demonstration, with the right modifications, this script can become useful in constructing robust datasets and supporting various machine learning training that require understanding and retrieval of information.
 
 ## How It Works
 
