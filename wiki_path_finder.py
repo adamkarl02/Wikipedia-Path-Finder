@@ -1,8 +1,6 @@
-from heapq import nlargest
-import requests
+import requests, faiss, numpy as np
 from collections import deque
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 from functools import cache
 
 model = SentenceTransformer('BAAI/bge-base-en-v1.5')
@@ -42,37 +40,58 @@ def get_wiki_data(name: str) -> dict:
 
 
 
-def heuristic_link_sort(links: list, goal_keywords: list, current_depth: int, max_depth: int) -> list:
+def heuristic_link_sort(links: list[str], goal_keywords: list[str], current_depth: int, max_depth: int = 2, GPU: int = None) -> list[str]:
     """
-    Sorts a list of Wikipedia page titles based on their relevance to the goal keywords,
-    factoring in the current depth of the search to prioritize the most relevant links.
+    Sorts a list of Wikipedia page links based on their semantic similarity to a set
+    of goal keywords, optionally using GPU acceleration.
+
+    This function encodes the provided links and goal keywords into embeddings,
+    normalizes them, and then uses a FAISS index to find the most similar links to the
+    goal keywords. If a GPU is available and specified, the function will use GPU
+    resources to accelerate the similarity search process.
 
     Parameters:
     ----------
-    links : list
-        A list of Wikipedia page titles to be sorted.
-    goal_keywords : list
-        Keywords that represent the goal topic, used to determine relevance.
+    links : list[str]
+        A list of strings, where each string is a title of a Wikipedia page.
+    goal_keywords : list[str]
+        A list of strings representing the keywords of the goal.
     current_depth : int
-        The current depth in the search tree, used to adjust the number of links considered.
-    max_depth : int
-        The maximum allowed depth in the search tree, which influences the relevance sorting.
+        The current depth in the search tree.
+    max_depth : int, optional
+        The maximum depth for the search tree. Defaults to 2.
+    GPU : int or None, optional
+        The device ID of the GPU to use for acceleration. If None, CPU is used. Defaults to None.
 
     Returns:
     -------
-    list
-        A sorted list of Wikipedia page titles based on their relevance to the goal keywords.
+    list[str]
+        A list of the top N most similar Wikipedia page titles to the goal keywords,
+        where N is determined by the depth factor and the length of the input links.
     """
     depth_factor = (max_depth - current_depth) / max_depth
     top_n = int(len(links) * depth_factor)
-    top_n = max(top_n, 5)  
+    top_n = max(top_n, 5)
 
-    goal_embedding = model.encode([' '.join(goal_keywords)], convert_to_tensor=True)
-    link_embeddings = model.encode(links, convert_to_tensor=True)
+    goal_embedding = model.encode(' '.join(goal_keywords), convert_to_tensor=False)
+    link_embeddings = model.encode(links, convert_to_tensor=False)
 
-    cosine_scores = cosine_similarity(goal_embedding, link_embeddings)[0]
-    top_links_scores = nlargest(top_n, zip(links, cosine_scores), key=lambda x: x[1])
-    return [link for link, score in top_links_scores]
+    goal_embedding = goal_embedding / np.linalg.norm(goal_embedding)
+    link_embeddings = link_embeddings / np.linalg.norm(link_embeddings, axis=1, keepdims=True)
+
+    dimension = link_embeddings.shape[1]
+    index = faiss.IndexFlatIP(dimension)
+
+    if GPU is not None:
+        res = faiss.StandardGpuResources()
+        index = faiss.index_cpu_to_gpu(res, GPU, index)
+
+    index.add(link_embeddings)
+    _, top_indices = index.search(goal_embedding.reshape(1, -1), top_n)
+    top_links = [links[i] for i in top_indices[0]]
+
+    return top_links
+
 
 
 def find_path(start_title: str, goal_title: str, max_depth: int = 3) -> tuple:
@@ -114,13 +133,13 @@ def find_path(start_title: str, goal_title: str, max_depth: int = 3) -> tuple:
                     for link in sorted_links:
                         if link == normalized_goal_title:
                             return path + [link], len(path) + 1
-                        if link not in visited:
+                        if link not in visited and current_depth < max_depth - 1:  # Adjusted condition here
                             visited.add(link)
                             queue.append((link, path + [link], current_depth + 1))
                 else:
                     print(f"No further links found from {current_title}.")
             else:
-                break  
+                break   
     
     return None, 1
 
